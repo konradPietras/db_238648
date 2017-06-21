@@ -17,6 +17,7 @@ public class Parser
     private void forward()
     {
         this.ctoken = this.tokens.next();
+		this.skipSpaces();
     }
 
     private String value()
@@ -36,21 +37,47 @@ public class Parser
         }
     }
 
-    private Node parseNumber()
-    {
+	private void skipSpaces() {
+		if(this.check(TokenType.SPC)) {
+			this.ctoken = this.tokens.next();
+			skipSpaces();
+		}
+	}
+	
+    private NodeNumber parseNumber()
+    {		
         this.expect(TokenType.NUM);
         String value = this.value();
         this.forward();
+		if(this.check(TokenType.NUM)) {
+			value += this.parseNumber().getValue();
+		}
         return new NodeNumber(value);
     }
 
+	private Node parseComponent() {
+		if(this.check(TokenType.LBR)) {
+			this.forward();
+			Node inside = parseExpression();
+			this.expect(TokenType.RBR);
+			this.forward();
+			return inside;
+		} else {
+			return this.parseNumber();
+		}
+	}
+	
     private Node parseTerm()
     {
-        Node left = this.parseNumber();
+		Node left = this.parseComponent();
         if (this.check(TokenType.MUL)) {
             this.forward();
             Node right = this.parseTerm();
             return new NodeMul(left, right);
+        } else if (this.check(TokenType.DIV)) {
+            this.forward();
+            Node right = this.parseTerm();
+            return new NodeDiv(left, right);
         } else {
             return left;
         }
@@ -58,14 +85,18 @@ public class Parser
 
     private Node parseExpression()
     {
-        Node left = this.parseTerm();
-        if (this.check(TokenType.ADD)) {
-            this.forward();
-            Node right = this.parseExpression();
-            return new NodeAdd(left, right);
-        } else {
-            return left;
-        }
+		Node left = this.parseTerm();
+		if (this.check(TokenType.ADD)) {
+			this.forward();
+			Node right = this.parseExpression();
+			return new NodeAdd(left, right);
+		} else if (this.check(TokenType.SUB)) {
+			this.forward();
+			Node right = this.parseExpression();
+			return new NodeSub(left, right);
+		} else {
+			return left;
+		}
     }
 
     private Node parseProgram()
